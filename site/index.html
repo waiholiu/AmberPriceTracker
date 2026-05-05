@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amber Energy Price Tracker — Postcode 2600</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --amber: #f0883e;
+      --green: #3fb950;
+      --blue: #58a6ff;
+      --red: #f85149;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    header h1 span { color: var(--amber); }
+
+    .stats-bar {
+      display: flex;
+      gap: 2rem;
+      margin-left: auto;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .stat-item { display: flex; flex-direction: column; align-items: flex-end; }
+
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+    .stat-value {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--text);
+    }
+
+    .stat-value.positive { color: var(--red); }
+    .stat-value.negative { color: var(--green); }
+
+    .controls {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .controls label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .controls select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .controls select:focus {
+      outline: none;
+      border-color: var(--amber);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+    }
+
+    .chart-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .chart-card h2 span { color: var(--amber); }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      overflow-x: auto;
+    }
+
+    .table-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #21262d;
+      color: var(--text);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: #1c2128; }
+
+    .price-positive { color: var(--red); font-weight: 600; }
+    .price-negative { color: var(--green); font-weight: 600; }
+    .price-neutral  { color: var(--text); }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .error-msg {
+      background: #2d1b1b;
+      border: 1px solid var(--red);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      color: var(--red);
+      font-size: 0.9rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    footer a { color: var(--amber); text-decoration: none; }
+
+    @media (max-width: 700px) {
+      header, .controls, main { padding-left: 1rem; padding-right: 1rem; }
+      .stats-bar { gap: 1rem; margin-left: 0; }
+      .chart-container { height: 240px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ <span>Amber</span> Energy Price Tracker</h1>
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">Latest Energy Price</span>
+      <span class="stat-value" id="latest-energy">—</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Latest Feed-In Rate</span>
+      <span class="stat-value" id="latest-feedin">—</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Data Points</span>
+      <span class="stat-value" id="data-points">—</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Last Updated</span>
+      <span class="stat-value" id="last-updated" style="font-size:0.85rem;">—</span>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <label for="range-filter">Show last:</label>
+  <select id="range-filter">
+    <option value="24">24 hours</option>
+    <option value="48">48 hours</option>
+    <option value="168">7 days</option>
+    <option value="720">30 days</option>
+    <option value="0" selected>All time</option>
+  </select>
+
+  <label for="tz-filter">Timezone:</label>
+  <select id="tz-filter">
+    <option value="Australia/Sydney" selected>Sydney (AEST/AEDT)</option>
+    <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+    <option value="Australia/Brisbane">Brisbane (AEST)</option>
+    <option value="UTC">UTC</option>
+    <option value="local">My Local Time</option>
+  </select>
+</div>
+
+<main id="main-content">
+  <div class="loading" id="loading">Loading price data…</div>
+</main>
+
+<footer>
+  Data scraped hourly from
+  <a href="https://www.amber.com.au/" target="_blank">amber.com.au</a>
+  for postcode 2600 ·
+  <a href="https://github.com/waiholiu/AmberPriceTracker" target="_blank">GitHub repo</a>
+</footer>
+
+<script>
+const CHART_COLORS = {
+  energy: '#f0883e',
+  feedin: '#3fb950',
+};
+
+const chartBase = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: true, labels: { color: '#8b949e', boxWidth: 14, font: { size: 12 } } },
+    tooltip: {
+      backgroundColor: '#161b22',
+      borderColor: '#30363d',
+      borderWidth: 1,
+      titleColor: '#e6edf3',
+      bodyColor: '#8b949e',
+      cornerRadius: 6,
+      padding: 10,
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: '#21262d' },
+      ticks: { color: '#8b949e', maxTicksLimit: 10 },
+    },
+    y: {
+      grid: { color: '#21262d' },
+      ticks: { color: '#8b949e', callback: v => v + ' c/kWh' },
+    },
+  },
+};
+
+let rawData = null;
+let timelineChart = null;
+let hourlyChart = null;
+
+function getSelectedTz() {
+  const val = document.getElementById('tz-filter').value;
+  return val === 'local' ? Intl.DateTimeFormat().resolvedOptions().timeZone : val;
+}
+
+function parseTimestamp(ts) {
+  // "2024-05-01 14:00:00 UTC" → Date
+  return new Date(ts.replace(' UTC', 'Z'));
+}
+
+function getFilteredData() {
+  const hours = parseInt(document.getElementById('range-filter').value, 10);
+  if (!hours) return rawData.data;
+  const cutoff = new Date(Date.now() - hours * 3600 * 1000);
+  return rawData.data.filter(d => parseTimestamp(d.timestamp) >= cutoff);
+}
+
+function priceClass(val) {
+  if (val === null || val === undefined) return 'price-neutral';
+  return val > 0 ? 'price-positive' : 'price-negative';
+}
+
+function formatPrice(val) {
+  if (val === null || val === undefined) return '—';
+  return val.toFixed(2) + ' c/kWh';
+}
+
+function updateStats() {
+  const last = rawData.data[rawData.data.length - 1];
+  const ep = last?.energy_price_c_kwh;
+  const fi = last?.feed_in_rate_c_kwh;
+
+  const epEl = document.getElementById('latest-energy');
+  epEl.textContent = formatPrice(ep);
+  epEl.className = 'stat-value ' + priceClass(ep);
+
+  const fiEl = document.getElementById('latest-feedin');
+  fiEl.textContent = formatPrice(fi);
+  fiEl.className = 'stat-value ' + priceClass(fi);
+
+  document.getElementById('data-points').textContent = rawData.data.length;
+
+  if (last?.timestamp) {
+    const d = parseTimestamp(last.timestamp);
+    const tz = getSelectedTz();
+    document.getElementById('last-updated').textContent = d.toLocaleString('en-AU', {
+      timeZone: tz, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  }
+}
+
+function buildUI() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="chart-card">
+      <h2>⚡ Energy Price &amp; Feed-In Rate <span>Over Time</span></h2>
+      <div class="chart-container"><canvas id="timeline-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>🕐 Average Price by <span>Hour of Day</span></h2>
+      <div class="chart-container"><canvas id="hourly-chart"></canvas></div>
+    </div>
+    <div class="table-card">
+      <h2>📋 Recent Readings</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Energy Price (c/kWh)</th>
+            <th>Feed-In Rate (c/kWh)</th>
+          </tr>
+        </thead>
+        <tbody id="price-table-body"></tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderTimeline() {
+  const filtered = getFilteredData();
+  const tz = getSelectedTz();
+  const labels = filtered.map(d => parseTimestamp(d.timestamp));
+  const energyData = filtered.map(d => d.energy_price_c_kwh);
+  const feedinData = filtered.map(d => d.feed_in_rate_c_kwh);
+
+  if (timelineChart) timelineChart.destroy();
+  timelineChart = new Chart(document.getElementById('timeline-chart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Energy Price',
+          data: energyData,
+          borderColor: CHART_COLORS.energy,
+          backgroundColor: CHART_COLORS.energy + '18',
+          fill: true,
+          tension: 0.3,
+          pointRadius: filtered.length > 100 ? 0 : 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+        {
+          label: 'Feed-In Rate',
+          data: feedinData,
+          borderColor: CHART_COLORS.feedin,
+          backgroundColor: CHART_COLORS.feedin + '18',
+          fill: true,
+          tension: 0.3,
+          pointRadius: filtered.length > 100 ? 0 : 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      ...chartBase,
+      scales: {
+        ...chartBase.scales,
+        x: {
+          ...chartBase.scales.x,
+          type: 'time',
+          time: { tooltipFormat: 'dd MMM, HH:mm' },
+          ticks: {
+            ...chartBase.scales.x.ticks,
+            callback(value) {
+              return new Date(value).toLocaleString('en-AU', {
+                timeZone: tz, month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+              });
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderHourly() {
+  const filtered = getFilteredData();
+  const tz = getSelectedTz();
+  const energyBuckets = Array.from({ length: 24 }, () => []);
+  const feedinBuckets = Array.from({ length: 24 }, () => []);
+
+  for (const d of filtered) {
+    const dt = parseTimestamp(d.timestamp);
+    const hour = parseInt(dt.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: tz }), 10);
+    if (d.energy_price_c_kwh !== null) energyBuckets[hour].push(d.energy_price_c_kwh);
+    if (d.feed_in_rate_c_kwh !== null) feedinBuckets[hour].push(d.feed_in_rate_c_kwh);
+  }
+
+  const avg = arr => arr.length ? +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2) : null;
+  const labels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+
+  if (hourlyChart) hourlyChart.destroy();
+  hourlyChart = new Chart(document.getElementById('hourly-chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Avg Energy Price',
+          data: energyBuckets.map(avg),
+          backgroundColor: CHART_COLORS.energy + '80',
+          borderColor: CHART_COLORS.energy,
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Avg Feed-In Rate',
+          data: feedinBuckets.map(avg),
+          backgroundColor: CHART_COLORS.feedin + '80',
+          borderColor: CHART_COLORS.feedin,
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: chartBase,
+  });
+}
+
+function renderTable() {
+  const filtered = getFilteredData();
+  const tz = getSelectedTz();
+  const tbody = document.getElementById('price-table-body');
+  // Show latest 50 rows, most recent first
+  const recent = [...filtered].reverse().slice(0, 50);
+
+  tbody.innerHTML = recent.map(d => {
+    const dt = parseTimestamp(d.timestamp);
+    const tsStr = dt.toLocaleString('en-AU', {
+      timeZone: tz, day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    const ep = d.energy_price_c_kwh;
+    const fi = d.feed_in_rate_c_kwh;
+    return `<tr>
+      <td>${tsStr}</td>
+      <td class="${priceClass(ep)}">${formatPrice(ep)}</td>
+      <td class="${priceClass(fi)}">${formatPrice(fi)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAll() {
+  updateStats();
+  renderTimeline();
+  renderHourly();
+  renderTable();
+}
+
+async function loadData() {
+  const main = document.getElementById('main-content');
+  try {
+    const resp = await fetch('prices.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    rawData = await resp.json();
+
+    if (!rawData.data || rawData.data.length === 0) {
+      main.innerHTML = '<div class="error-msg">No data available yet. The scraper will populate data on its first run.</div>';
+      return;
+    }
+
+    buildUI();
+    renderAll();
+
+    document.getElementById('range-filter').addEventListener('change', renderAll);
+    document.getElementById('tz-filter').addEventListener('change', renderAll);
+  } catch (err) {
+    main.innerHTML = `<div class="error-msg">Failed to load price data: ${err.message}</div>`;
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>

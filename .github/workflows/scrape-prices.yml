@@ -1,0 +1,61 @@
+name: Scrape Amber Energy Prices
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # Every hour on the hour
+  workflow_dispatch: {}    # Allow manual triggers
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install chromium --with-deps
+
+      - name: Scrape Amber energy prices
+        run: python scrape.py
+
+      - name: Convert spreadsheet to JSON
+        run: python convert.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Data/prices.xlsx Data/prices.json
+          git diff --cached --quiet || git commit -m "Update price data $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
+
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp site/index.html _site/
+          cp Data/prices.json _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: scrape
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

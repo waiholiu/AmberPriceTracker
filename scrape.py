@@ -80,7 +80,11 @@ def scrape_prices() -> dict:
 
         print(f"  Navigating to {AMBER_URL} ...")
         page.goto(AMBER_URL, timeout=60_000, wait_until="domcontentloaded")
-        page.wait_for_load_state("networkidle", timeout=30_000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=15_000)
+        except Exception:
+            print("  networkidle wait timed out; continuing anyway")
+        page.wait_for_timeout(2_000)  # brief settle for client-side rendering
 
         # Find the postcode input
         postcode_input = None

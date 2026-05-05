@@ -10,7 +10,12 @@ from pathlib import Path
 from openpyxl import Workbook, load_workbook
 from playwright.sync_api import sync_playwright
 
-AMBER_URL = "https://www.amber.com.au/"
+# Pages to try in order — dedicated forecast pages first, then homepage
+AMBER_URLS = [
+    "https://www.amber.com.au/spot-price-and-forecast",
+    "https://www.amber.com.au/forecast",
+    "https://www.amber.com.au/",
+]
 POSTCODE = "2600"
 XLSX_PATH = Path("Data/prices.xlsx")
 
@@ -78,16 +83,6 @@ def scrape_prices() -> dict:
         )
         page = context.new_page()
 
-        print(f"  Navigating to {AMBER_URL} ...")
-        page.goto(AMBER_URL, timeout=60_000, wait_until="domcontentloaded")
-        try:
-            page.wait_for_load_state("networkidle", timeout=15_000)
-        except Exception:
-            print("  networkidle wait timed out; continuing anyway")
-        page.wait_for_timeout(2_000)  # brief settle for client-side rendering
-
-        # Find the postcode input
-        postcode_input = None
         selectors = [
             'input[placeholder*="postcode" i]',
             'input[placeholder*="post code" i]',
@@ -100,19 +95,51 @@ def scrape_prices() -> dict:
             'input[type="text"]',
             'input[type="number"]',
         ]
-        for sel in selectors:
+
+        postcode_input = None
+        for url in AMBER_URLS:
+            print(f"  Navigating to {url} ...")
             try:
-                el = page.locator(sel).first
-                if el.is_visible(timeout=2_000):
-                    postcode_input = el
-                    print(f"  Found postcode input via selector: {sel}")
-                    break
-            except Exception:
+                page.goto(url, timeout=60_000, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"  goto failed: {e}; trying next URL")
                 continue
+            try:
+                page.wait_for_load_state("networkidle", timeout=15_000)
+            except Exception:
+                print("  networkidle wait timed out; continuing anyway")
+            page.wait_for_timeout(3_000)
+
+            # Best-effort dismiss cookie / consent banner
+            for btn_text in ["accept", "agree", "got it", "allow all"]:
+                try:
+                    btn = page.get_by_role("button", name=re.compile(btn_text, re.IGNORECASE))
+                    if btn.first.is_visible(timeout=1_000):
+                        btn.first.click()
+                        page.wait_for_timeout(500)
+                        break
+                except Exception:
+                    continue
+
+            for sel in selectors:
+                try:
+                    el = page.locator(sel).first
+                    if el.is_visible(timeout=2_000):
+                        postcode_input = el
+                        print(f"  Found postcode input via selector: {sel} on {url}")
+                        break
+                except Exception:
+                    continue
+            if postcode_input is not None:
+                break
 
         if postcode_input is None:
-            # Save screenshot for debugging
-            page.screenshot(path="debug_screenshot.png")
+            # Save screenshot + html for debugging
+            page.screenshot(path="debug_screenshot.png", full_page=True)
+            try:
+                Path("debug_page.html").write_text(page.content(), encoding="utf-8")
+            except Exception:
+                pass
             raise RuntimeError(
                 "Could not find a postcode input on amber.com.au. "
                 "A debug screenshot has been saved to debug_screenshot.png"
@@ -146,7 +173,11 @@ def scrape_prices() -> dict:
         energy_price, feed_in_rate = _extract_prices_from_text(page_text)
 
         if energy_price is None and feed_in_rate is None:
-            page.screenshot(path="debug_screenshot.png")
+            page.screenshot(path="debug_screenshot.png", full_page=True)
+            try:
+                Path("debug_page.html").write_text(page.content(), encoding="utf-8")
+            except Exception:
+                pass
 
         browser.close()
 

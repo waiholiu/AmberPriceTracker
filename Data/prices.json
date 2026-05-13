@@ -500,6 +500,11 @@
       "timestamp": "2026-05-13 16:16:39 UTC",
       "energy_price_c_kwh": 17.43105,
       "feed_in_rate_c_kwh": 7.75401
+    },
+    {
+      "timestamp": "2026-05-13 18:54:53 UTC",
+      "energy_price_c_kwh": 17.34777,
+      "feed_in_rate_c_kwh": 7.6783
     }
   ]
 }

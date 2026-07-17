@@ -3415,6 +3415,11 @@
       "timestamp": "2026-07-17 20:03:23 UTC",
       "energy_price_c_kwh": 24.11691,
       "feed_in_rate_c_kwh": 12.50697
+    },
+    {
+      "timestamp": "2026-07-17 21:50:19 UTC",
+      "energy_price_c_kwh": 40.46085,
+      "feed_in_rate_c_kwh": 14.93009
     }
   ]
 }

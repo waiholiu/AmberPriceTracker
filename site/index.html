@@ -8,15 +8,15 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --amber: #f0883e;
-      --green: #3fb950;
-      --blue: #58a6ff;
-      --red: #f85149;
+      --bg: #ffffff;
+      --surface: #f6f8fa;
+      --border: #d0d7de;
+      --text: #24292f;
+      --text-muted: #656d76;
+      --amber: #cf6c1a;
+      --green: #1a7f37;
+      --blue: #0969da;
+      --red: #cf222e;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -161,13 +161,13 @@
 
     td {
       padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid #21262d;
+      border-bottom: 1px solid var(--border);
       color: var(--text);
     }
 
     tr:last-child td { border-bottom: none; }
 
-    tr:hover td { background: #1c2128; }
+    tr:hover td { background: #eaeef2; }
 
     .price-positive { color: var(--red); font-weight: 600; }
     .price-negative { color: var(--green); font-weight: 600; }
@@ -183,7 +183,7 @@
     }
 
     .error-msg {
-      background: #2d1b1b;
+      background: #fff0f0;
       border: 1px solid var(--red);
       border-radius: 8px;
       padding: 1rem 1.5rem;
@@ -264,33 +264,33 @@
 
 <script>
 const CHART_COLORS = {
-  energy: '#f0883e',
-  feedin: '#3fb950',
+  energy: '#cf6c1a',
+  feedin: '#1a7f37',
 };
 
 const chartBase = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: true, labels: { color: '#8b949e', boxWidth: 14, font: { size: 12 } } },
+    legend: { display: true, labels: { color: '#656d76', boxWidth: 14, font: { size: 12 } } },
     tooltip: {
-      backgroundColor: '#161b22',
-      borderColor: '#30363d',
+      backgroundColor: '#ffffff',
+      borderColor: '#d0d7de',
       borderWidth: 1,
-      titleColor: '#e6edf3',
-      bodyColor: '#8b949e',
+      titleColor: '#24292f',
+      bodyColor: '#656d76',
       cornerRadius: 6,
       padding: 10,
     },
   },
   scales: {
     x: {
-      grid: { color: '#21262d' },
-      ticks: { color: '#8b949e', maxTicksLimit: 10 },
+      grid: { color: '#d0d7de' },
+      ticks: { color: '#656d76', maxTicksLimit: 10 },
     },
     y: {
-      grid: { color: '#21262d' },
-      ticks: { color: '#8b949e', callback: v => v + ' c/kWh' },
+      grid: { color: '#d0d7de' },
+      ticks: { color: '#656d76', callback: v => v + ' c/kWh' },
     },
   },
 };
